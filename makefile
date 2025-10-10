@@ -1,5 +1,5 @@
 run: taxforms.py
-	python3 taxes.py
+	python taxes.py
 
 1040.js/forms/f1040.m4:
 	git clone https://github.com/b-k/1040.js
