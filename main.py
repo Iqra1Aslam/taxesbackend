@@ -417,8 +417,8 @@ def update_form_file(data: dict):
 #         "final_data": form_state["answers"],
 #     }
 
-# ------------------- MongoDB Connection -------------------
 client = MongoClient("mongodb+srv://iqra:Easy0990@cluster0.oj1xr3k.mongodb.net/")
+
 db = client["tax_app"]
 users_collection = db["users"]
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -465,22 +465,6 @@ ALGORITHM = "HS256"
 #             "email": user.email
 #         }
 #     }
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, EmailStr
-from pymongo import MongoClient
-
-app = FastAPI()
-
-# MongoDB connection
-client = MongoClient("mongodb+srv://<username>:<password>@<cluster>.mongodb.net/")
-db = client["testdb"]
-users_collection = db["users"]
-
-# Pydantic model
-class User(BaseModel):
-    name: str
-    email: EmailStr
-    password: str  # plain text (not secure)
 
 @app.post("/signup")
 def signup(user: User):
@@ -819,4 +803,5 @@ def google_signin(user: dict):
     }
 
 # uvicorn test:app --host 0.0.0.0 --port 8000 --reload
+
 
