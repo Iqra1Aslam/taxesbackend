@@ -9,7 +9,7 @@ from passlib.context import CryptContext
 import stripe
 from datetime import datetime
 from bson import ObjectId
-
+from dotenv import load_dotenv
 load_dotenv()
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 # ---------------- FASTAPI APP ----------------
@@ -787,3 +787,4 @@ def google_signin(user: dict):
     }
 
 # uvicorn test:app --host 0.0.0.0 --port 8000 --reload
+
