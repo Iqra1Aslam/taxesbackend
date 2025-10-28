@@ -465,30 +465,62 @@ ALGORITHM = "HS256"
 #             "email": user.email
 #         }
 #     }
-@app.post("/signup")
-def signup(user: Signup):
-    existing_user = users_collection.find_one({"email": user.email})
-    if existing_user:
-        raise HTTPException(status_code=400, detail="User already exist")
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, EmailStr
+from pymongo import MongoClient
 
-    hashed_pw = pwd_context.hash(user.password)
-    user_data = {
+app = FastAPI()
+
+# MongoDB connection
+client = MongoClient("mongodb+srv://<username>:<password>@<cluster>.mongodb.net/")
+db = client["testdb"]
+users_collection = db["users"]
+
+# Pydantic model
+class User(BaseModel):
+    name: str
+    email: EmailStr
+    password: str  # plain text (not secure)
+
+@app.post("/signup")
+def signup(user: User):
+    # Check if email already exists
+    if users_collection.find_one({"email": user.email}):
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    # Insert new user
+    new_user = {
         "name": user.name,
         "email": user.email,
-        "password": hashed_pw
+        "password": user.password,  # ⚠️ plain text
     }
-    users_collection.insert_one(user_data)
+    users_collection.insert_one(new_user)
+    return {"message": "User registered successfully", "user": user.dict()}
+
+# @app.post("/signup")
+# def signup(user: Signup):
+#     existing_user = users_collection.find_one({"email": user.email})
+#     if existing_user:
+#         raise HTTPException(status_code=400, detail="User already exist")
+
+    # hashed_pw = pwd_context.hash(user.password)
+    # user_data = {
+    #     "name": user.name,
+    #     "email": user.email,
+    #     "password": hashed_pw
+    # }
+    # users_collection.insert_one(user_data)
 
     # ✅ Create JWT token (2–3 lines)
-    payload = {"email": user.email, "exp": datetime.utcnow() + timedelta(hours=2)}
-    token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    # payload = {"email": user.email, "exp": datetime.utcnow() + timedelta(hours=2)}
+    # token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
     # ✅ Return message + user info + token
-    return {
-        "message": "Signup successful",
-        "user": {"name": user.name, "email": user.email},
-        "token": token
-    }
+    # return {
+    #     "message": "Signup successful",
+    #     "user": {"name": user.name, "email": user.email},
+    #     "token": token
+    # }
 # def get_user_from_token(authorization: str = Header(None)):
 #     if not authorization:
 #         raise HTTPException(status_code=401, detail="Missing token")
@@ -787,3 +819,4 @@ def google_signin(user: dict):
     }
 
 # uvicorn test:app --host 0.0.0.0 --port 8000 --reload
+
