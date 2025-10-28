@@ -686,14 +686,14 @@ def signin(user: Signin):
     db_user = users_collection.find_one({"email": user.email})
     if not db_user:
         raise HTTPException(status_code=401, detail="Invalid email or password")
-    
-    # Verify password
-    if not pwd_context.verify(user.password, db_user["password"]):
+     # ✅ Direct password comparison (no hashing)
+    if user.password != db_user["password"]:
         raise HTTPException(status_code=401, detail="Invalid email or password")
+
      # ✅ Create JWT token (2–3 lines)
     payload = {"email": user.email, "exp": datetime.utcnow() + timedelta(hours=2)}
     token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
-
+    
     return {
         "message": "Signin successful",
         "user": {"name": db_user["name"], "email": db_user["email"]},
@@ -787,4 +787,5 @@ def google_signin(user: dict):
     }
 
 # uvicorn test:app --host 0.0.0.0 --port 8000 --reload
+
 
