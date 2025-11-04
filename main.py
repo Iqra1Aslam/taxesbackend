@@ -423,8 +423,12 @@ def update_form_file(data: dict):
 #     }
 
 # ------------------- MongoDB Connection -------------------
-client = MongoClient("mongodb+srv://iqra:Easy0990@cluster0.oj1xr3k.mongodb.net/")
 
+# Get the MongoDB URI from environment
+mongo_uri = os.getenv("MONGO_URI")
+
+# Initialize MongoDB client
+client = MongoClient(mongo_uri)
 db = client["tax_app"]
 users_collection = db["users"]
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -868,3 +872,4 @@ def verify_otp(request: VerifyRequest):
 
 # uvicorn test:app --host 0.0.0.0 --port 8000 --reload
 # uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
