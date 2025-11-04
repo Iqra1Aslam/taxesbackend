@@ -477,11 +477,11 @@ def signup(user: Signup):
     if existing_user:
         raise HTTPException(status_code=400, detail="User already exist")
 
-    # hashed_pw = pwd_context.hash(user.password)
+    hashed_pw = pwd_context.hash(user.password)
     user_data = {
         "name": user.name,
         "email": user.email,
-        "password": user.password
+        "password": hashed_pw
     }
     users_collection.insert_one(user_data)
 
@@ -692,14 +692,14 @@ def signin(user: Signin):
     db_user = users_collection.find_one({"email": user.email})
     if not db_user:
         raise HTTPException(status_code=401, detail="Invalid email or password")
-     # ✅ Direct password comparison (no hashing)
-    if user.password != db_user["password"]:
+    
+    # Verify password
+    if not pwd_context.verify(user.password, db_user["password"]):
         raise HTTPException(status_code=401, detail="Invalid email or password")
-
      # ✅ Create JWT token (2–3 lines)
     payload = {"email": user.email, "exp": datetime.utcnow() + timedelta(hours=2)}
     token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
-    
+
     return {
         "message": "Signin successful",
         "user": {"name": db_user["name"], "email": db_user["email"]},
@@ -791,7 +791,7 @@ def google_signin(user: dict):
         "token": token,  # ✅ include token here too
         "user": {"name": user["name"], "email": user["email"]}
     }
-    # Temporary in-memory OTP store
+# Temporary in-memory OTP store
 otp_store = {}
 
 # ---------- MODELS ----------
@@ -801,6 +801,7 @@ class EmailRequest(BaseModel):
 class VerifyRequest(BaseModel):
     email: EmailStr
     otp: str
+
 # ---------- HELPER FUNCTIONS ----------
 def generate_otp():
     """Generate 4-digit OTP"""
@@ -829,7 +830,9 @@ def send_email(receiver_email: str, otp: str):
     except Exception as e:
         print("❌ Email error:", e)
         return False
-    @app.post("/send-otp")
+
+# ---------- ROUTES ----------
+@app.post("/send-otp")
 def send_otp(request: EmailRequest):
     email = request.email
     otp = generate_otp()
@@ -862,7 +865,6 @@ def verify_otp(request: VerifyRequest):
     del otp_store[request.email]
     return {"success": True, "message": "OTP verified successfully"}
 
+
 # uvicorn test:app --host 0.0.0.0 --port 8000 --reload
-
-
-
+# uvicorn main:app --host 0.0.0.0 --port 8000 --reload
