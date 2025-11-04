@@ -9,6 +9,12 @@ from passlib.context import CryptContext
 import stripe
 from datetime import datetime
 from bson import ObjectId
+import smtplib
+import random
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from datetime import datetime, timedelta
+
 from dotenv import load_dotenv
 load_dotenv()
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
@@ -785,7 +791,78 @@ def google_signin(user: dict):
         "token": token,  # ✅ include token here too
         "user": {"name": user["name"], "email": user["email"]}
     }
+    # Temporary in-memory OTP store
+otp_store = {}
+
+# ---------- MODELS ----------
+class EmailRequest(BaseModel):
+    email: EmailStr
+
+class VerifyRequest(BaseModel):
+    email: EmailStr
+    otp: str
+# ---------- HELPER FUNCTIONS ----------
+def generate_otp():
+    """Generate 4-digit OTP"""
+    return str(random.randint(1000, 9999))
+
+def send_email(receiver_email: str, otp: str):
+    sender_email = "hafizaiqraaslam1@gmail.com"
+    sender_password = "mmcj tsqz kune zwzs"  # Google App Password
+
+    subject = "Your OTP Code"
+    body = f"Your One Time Password (OTP) is: {otp}\n\nThis code will expire in 5 minutes."
+
+    message = MIMEMultipart()
+    message["From"] = sender_email
+    message["To"] = receiver_email
+    message["Subject"] = subject
+    message.attach(MIMEText(body, "plain"))
+
+    try:
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
+        server.login(sender_email, sender_password)
+        server.send_message(message)
+        server.quit()
+        return True
+    except Exception as e:
+        print("❌ Email error:", e)
+        return False
+    @app.post("/send-otp")
+def send_otp(request: EmailRequest):
+    email = request.email
+    otp = generate_otp()
+
+    if send_email(email, otp):
+        # Save OTP in memory with expiration
+        otp_store[email] = {
+            "otp": otp,
+            "expires_at": datetime.utcnow() + timedelta(minutes=5)
+        }
+        return {"success": True, "message": "OTP sent successfully"}
+    else:
+        raise HTTPException(status_code=500, detail="Failed to send OTP")
+
+@app.post("/verify-otp")
+def verify_otp(request: VerifyRequest):
+    record = otp_store.get(request.email)
+
+    if not record:
+        raise HTTPException(status_code=400, detail="No OTP found for this email")
+
+    if datetime.utcnow() > record["expires_at"]:
+        del otp_store[request.email]
+        raise HTTPException(status_code=400, detail="OTP expired")
+
+    if request.otp != record["otp"]:
+        raise HTTPException(status_code=400, detail="Invalid OTP")
+
+    # OTP verified — remove from memory
+    del otp_store[request.email]
+    return {"success": True, "message": "OTP verified successfully"}
 
 # uvicorn test:app --host 0.0.0.0 --port 8000 --reload
+
 
 
